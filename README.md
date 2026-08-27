@@ -4,6 +4,8 @@ Community maintenance patch for the Home Assistant **GCE RF Player** custom inte
 
 This is a derivative of the upstream GCE Electronics integration. It is **not an official GCE Electronics release**. The upstream project remains the source for the base integration and protocol support.
 
+> **Credit where it belongs:** GCE Electronics did the original RFPlayer integration work. This repository only maintains community modifications required for our Home Assistant use case.
+
 ## What this community build fixes
 
 - Handles `JAMMING` packets even when they do not contain a normal RF device address.
