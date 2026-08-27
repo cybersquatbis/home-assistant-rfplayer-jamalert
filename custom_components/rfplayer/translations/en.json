@@ -1,0 +1,94 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "GCE RfPlayer",
+        "description": "Select RfPlayer device",
+        "data": {
+          "device_serial": "USB devices found",
+          "ip_address": "IP address (if serial device not used)",
+          "port": "Port",
+          "device_simulator": "Use RfPlayer simulator"
+        }
+      }
+    },
+    "error": {
+      "device_missing": "Unable to connect to the specified device",
+      "multiple_device": "Select either a serial device or an IP address/port."
+    },
+    "abort": {
+      "single_instance_allowed": "Already configured. Only a single configuration possible.",
+      "unknown": "Unexpected error"
+    }
+  },
+  "options": {
+    "step": {
+      "configure_gateway": {
+        "title": "RFPlayer Options",
+        "data": {
+          "automatic_add": "Add device automatically when signal received",
+          "reconnect_interval": "Reconnect interval",
+          "receiver_protocols": "List of enabled receiver protocols",
+          "init_commands": "Comma-separated list of commands executed at startup",
+          "verbose_mode": "Enable verbose logging"
+        }
+      },
+      "add_rf_device": {
+        "title": "Add RF device",
+        "data": {
+          "protocol": "Device protocol",
+          "address": "Device address",
+          "profile_name": "Device profile"
+        }
+      },
+      "configure_rf_device": {
+        "title": "Configure RF device",
+        "data": {
+          "device": "Select RF device",
+          "redirect_address": "Redirect address"
+        }
+      }
+    },
+    "error": {
+      "incompatible_protocol": "Procotol and device profile are incompatible",
+      "invalid_address": "Address must be a positive integer, a X10 address (e.g. A1) or an hexadecimal value prefixed with x (e.g. xBEEF)",
+      "no_receiver_protocol": "At least one receiver protocol must be selected"
+    }
+  },
+  "services": {
+    "send_raw_command": {
+      "name": "Send command",
+      "description": "Send a command to RF device.",
+      "fields": {
+        "command": {
+          "name": "Command",
+          "description": "command using RFPlayer format."
+        }
+      }
+    },
+    "send_pairing_command": {
+      "name": "Send pairing command",
+      "description": "Send a pairing command to a RF device.",
+      "fields": {
+        "protocol": {
+          "name": "Protocol",
+          "description": "The RF device protocol."
+        },
+        "address": {
+          "name": "Address",
+          "description": "Device address. Do not use X10-form (e.g. 1 instead of A2)."
+        }
+      }
+    },
+    "simulate_event": {
+      "name": "Simulate event",
+      "description": "Simulate RF device event.",
+      "fields": {
+        "event_data": {
+          "name": "Event",
+          "description": "JSON event"
+        }
+      }
+    }
+  }
+}
