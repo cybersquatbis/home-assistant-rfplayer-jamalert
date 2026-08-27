@@ -1,0 +1,82 @@
+"""Async RfPlayer client."""
+
+import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass
+from functools import partial
+import logging
+from typing import cast
+
+from serialx import SerialException, create_serial_connection
+from .device import RfDeviceEvent, RfDeviceEventAdapter
+from .protocol import RfPlayerEventData, RfplayerProtocol
+
+_LOGGER = logging.getLogger(__name__)
+SIMULATOR_PORT = "/simulator"
+RECEIVER_MODES = ["X10", "RTS", "VISONIC", "BLYSS", "CHACON", "OREGONV1", "OREGONV2", "OREGONV3/OWL", "DOMIA", "X2D", "KD101", "PARROT", "TIC", "FS20", "JAMMING", "EDISIO"]
+DEVICE_PROTOCOLS = ["BLYSS", "CHACON", "DOMIA", "EDISIO", "FS20", "KD101", "OREGON", "PARROT", "RTS", "TIC", "VISONIC", "VISONIC433", "VISONIC868", "X10", "X2D", "X2D433", "X2D868", "X2DELEC", "X2DGAS", "X2DSHUTTER"]
+COMMAND_PROTOCOLS = ["BLYSS", "CHACON", "DOMIA", "EDISIO", "FS20", "KD101", "PARROT", "RTS", "VISONIC433", "VISONIC868", "X10", "X2D433", "X2D868", "X2DELEC", "X2DGAS", "X2DSHUTTER"]
+RFPLAYER_BAUD_RATE = 115200
+
+class RfPlayerException(Exception): pass
+
+@dataclass
+class RfPlayerClient:
+    event_callback: Callable[[RfDeviceEvent], None]
+    disconnect_callback: Callable[[Exception | None], None]
+    loop: asyncio.AbstractEventLoop
+    port: str
+    receiver_protocols: list[str]
+    init_commands: list[str]
+    verbose: bool
+    _protocol: RfplayerProtocol | None = None
+    _adapter: RfDeviceEventAdapter | None = None
+    async def connect(self) -> None:
+        self._adapter = RfDeviceEventAdapter(device_event_callback=self.event_callback)
+        if self.port == SIMULATOR_PORT:
+            _LOGGER.info("Connecting to RfPlayer simulator")
+            return
+        protocol_factory = partial(RfplayerProtocol, loop=self.loop, event_callback=self._adapter.raw_event_callback, disconnect_callback=self._disconnect_callback_internal, init_script=self._init_script(), verbose=self.verbose)
+        if self.port.startswith("tcp://"): self._protocol = await self._make_tcp_protocol(protocol_factory)
+        else: self._protocol = await self._make_serial_protocol(protocol_factory)
+    def close(self) -> None:
+        if self._protocol and self._protocol.transport: self._protocol.transport.close()
+        self._protocol = None
+    async def send_raw_command(self, command: str) -> None:
+        if self.port == SIMULATOR_PORT:
+            _LOGGER.info("Simulate sending command %s", command); return
+        if not self._protocol or not self._protocol.transport: raise RfPlayerException("Not connected")
+        await self._protocol.send_raw_command(command)
+    async def send_raw_request(self, command: str) -> str:
+        if not self._protocol or not self._protocol.transport: raise RfPlayerException("Not connected")
+        return await self._protocol.send_raw_request(command)
+    async def simulate_event(self, event_data: dict) -> None:
+        if not self.connected: raise RfPlayerException("Not connected")
+        assert self._adapter
+        self._adapter.raw_event_callback(RfPlayerEventData(event_data))
+    @property
+    def connected(self) -> bool: return self._protocol is not None or (self.port == SIMULATOR_PORT and self._adapter is not None)
+    @property
+    def protocol(self): return self._protocol
+    async def _make_serial_protocol(self, protocol_factory: Callable[[], RfplayerProtocol]) -> RfplayerProtocol:
+        try:
+            (_, protocol) = await create_serial_connection(self.loop, protocol_factory, self.port, RFPLAYER_BAUD_RATE)
+            return cast(RfplayerProtocol, protocol)
+        except (SerialException, FileNotFoundError, OSError) as err: raise RfPlayerException("Failed to create serial connection") from err
+    async def _make_tcp_protocol(self, protocol_factory: Callable[[], RfplayerProtocol]) -> RfplayerProtocol:
+        host_port = self.port.removeprefix("tcp://")
+        if ":" not in host_port: raise RfPlayerException("Invalid TCP port, expected format tcp://host:port")
+        host, port_str = host_port.split(":", 1)
+        try: port = int(port_str)
+        except ValueError as err: raise RfPlayerException("Invalid TCP port, port must be an integer") from err
+        try:
+            (_, protocol) = await self.loop.create_connection(protocol_factory, host, port)
+            return cast(RfplayerProtocol, protocol)
+        except OSError as err: raise RfPlayerException("Failed to create TCP connection") from err
+    def _disconnect_callback_internal(self, ex: Exception | None) -> None:
+        self.close(); self.disconnect_callback(ex)
+    def _init_script(self) -> list[str]:
+        result = []
+        if self.receiver_protocols: result.append(f"RECEIVER -* +{' +'.join(self.receiver_protocols)}")
+        if self.init_commands: result.extend(self.init_commands)
+        return result
