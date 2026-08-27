@@ -1,0 +1,23 @@
+name: Validate RFPlayer JAMALERT Community
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Python syntax
+        run: python -m compileall -q custom_components/rfplayer
+      - name: JSON syntax
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('.').rglob('*.json'):
+              json.loads(path.read_text(encoding='utf-8'))
+          PY
+      - name: Privacy scan
+        run: |
+          if grep -R -n -E '(device_tracker\.|mobile_app_|notify\.|192\.168\.|10\.[0-9]+\.|172\.(1[6-9]|2[0-9]|3[01])\.|/dev/serial/by-id/usb-|friendly_name:[[:space:]]*(Papa|Kristel))' custom_components README.md CHANGELOG.md NOTICE; then exit 1; fi
