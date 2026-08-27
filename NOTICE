@@ -1,0 +1,18 @@
+RFPlayer JAM'ALERT Community
+
+This distribution is a derivative work based on the GCE Electronics Home Assistant RFPlayer integration:
+https://github.com/gce-electronics/HA_RFPlayer
+
+Original project code owners are retained in custom_components/rfplayer/manifest.json.
+The original project is distributed under the Apache License 2.0.
+
+Community modifications in this package:
+- reliable handling of address-less JAMMING frames as JAMMING_0;
+- dedicated Home Assistant entity identity for the live JAM'ALERT detector;
+- tolerant OFF/ON JAMMING decoding using subType and subTypeMeaning;
+- additional RFPlayer connection, raw-frame and JAMMING diagnostics;
+- serial event parsing protection for malformed/unsupported RF frames;
+- correction of the all_off command-state typo;
+- integration version suffix 1.5.0-jamalert.2.
+
+No private Home Assistant entity IDs, USB serial IDs, names, addresses, notification targets, tokens or local network details are included.
